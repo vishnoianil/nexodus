@@ -10,12 +10,12 @@ import (
 
 	"github.com/urfave/cli/v2"
 
-	"github.com/nexodus-io/nexodus/internal/nexodus/nexd"
+	"github.com/nexodus-io/nexodus/internal/nexodus/nexrelay"
 	"go.uber.org/zap"
 )
 
 const (
-	nexodusLogEnv = "NEXD_LOGLEVEL"
+	nexRelayLogEnv = "NEXRELAY_LOGLEVEL"
 )
 
 // This variable is set using ldflags at build time. See Makefile for details.
@@ -23,7 +23,7 @@ var Version = "dev"
 
 func main() {
 	// set the log level
-	debug := os.Getenv(nexodusLogEnv)
+	debug := os.Getenv(nexRelayLogEnv)
 	var logger *zap.Logger
 	var err error
 	if debug != "" {
@@ -42,77 +42,63 @@ func main() {
 	cli.HelpFlag.(*cli.BoolFlag).Usage = "Show help"
 	// flags are stored in the global flags variable
 	app := &cli.App{
-		Name:      "nexd",
-		Usage:     "Node agent to configure encrypted mesh networking with nexodus.",
-		ArgsUsage: "controller-url",
+		Name:  "nexrelay",
+		Usage: "Nexodus relay agent that configure traffic relay between two nodes in Nexodus network through a relay node.",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "public-key",
 				Value:    "",
 				Usage:    "Public key for the local host - agent generates keys by default",
-				EnvVars:  []string{"NEXD_PUB_KEY"},
+				EnvVars:  []string{"NEXRELAY_PUB_KEY"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "private-key",
 				Value:    "",
 				Usage:    "Private key for the local host (dev purposes only - soon to be removed)",
-				EnvVars:  []string{"NEXD_PRIVATE_KEY"},
+				EnvVars:  []string{"NEXRELAY_PRIVATE_KEY"},
 				Required: false,
 			},
 			&cli.IntFlag{
 				Name:     "listen-port",
 				Value:    0,
 				Usage:    "Port wireguard is to listen for incoming peers on",
-				EnvVars:  []string{"NEXD_LISTEN_PORT"},
+				EnvVars:  []string{"NEXRELAY_LISTEN_PORT"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "request-ip",
 				Value:    "",
 				Usage:    "Request a specific IP address from Ipam if available (optional)",
-				EnvVars:  []string{"NEXD_REQUESTED_IP"},
+				EnvVars:  []string{"NEXRELAY_REQUESTED_IP"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "local-endpoint-ip",
 				Value:    "",
 				Usage:    "Specify the endpoint address of this node instead of being discovered (optional)",
-				EnvVars:  []string{"NEXD_LOCAL_ENDPOINT_IP"},
-				Required: false,
-			},
-			&cli.StringSliceFlag{
-				Name:     "child-prefix",
-				Usage:    "Request a CIDR range of addresses that will be advertised from this node (optional)",
-				EnvVars:  []string{"NEXD_REQUESTED_CHILD_PREFIX"},
+				EnvVars:  []string{"NEXRELAY_LOCAL_ENDPOINT_IP"},
 				Required: false,
 			},
 			&cli.BoolFlag{
 				Name:     "stun",
 				Usage:    "Discover the public address for this host using STUN",
 				Value:    false,
-				EnvVars:  []string{"NEXD_STUN"},
-				Required: false,
-			},
-			&cli.BoolFlag{
-				Name:     "relay-only",
-				Usage:    "Set if this node is unable to NAT hole punch in a hub zone (Nexodus will set this automatically if symmetric NAT is detected)",
-				Value:    false,
-				EnvVars:  []string{"NEXD_RELAY_ONLY"},
+				EnvVars:  []string{"NEXRELAY_STUN"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "username",
 				Value:    "",
 				Usage:    "Username for accessing the nexodus service",
-				EnvVars:  []string{"NEXD_USERNAME"},
+				EnvVars:  []string{"NEXRELAY_USERNAME"},
 				Required: false,
 			},
 			&cli.StringFlag{
 				Name:     "password",
 				Value:    "",
 				Usage:    "Password for accessing the nexodus service",
-				EnvVars:  []string{"NEXD_PASSWORD"},
+				EnvVars:  []string{"NEXRELAY_PASSWORD"},
 				Required: false,
 			},
 			&cli.BoolFlag{
@@ -140,7 +126,7 @@ func main() {
 
 			ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
-			nexodus, err := nexd.NewNexodus(
+			nexrelay, err := nexrelay.NewNexrelay(
 				ctx,
 				logger.Sugar(),
 				controller,
@@ -151,9 +137,7 @@ func main() {
 				cCtx.String("private-key"),
 				cCtx.String("request-ip"),
 				cCtx.String("local-endpoint-ip"),
-				cCtx.StringSlice("child-prefix"),
 				cCtx.Bool("stun"),
-				cCtx.Bool("relay-only"),
 				cCtx.Bool("insecure-skip-tls-verify"),
 				Version,
 			)
@@ -162,7 +146,7 @@ func main() {
 			}
 
 			wg := &sync.WaitGroup{}
-			if err := nexodus.Start(ctx, wg); err != nil {
+			if err := nexrelay.Start(ctx, wg); err != nil {
 				logger.Fatal(err.Error())
 			}
 			wg.Wait()

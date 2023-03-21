@@ -4,10 +4,10 @@ package nexodus
 
 import (
 	"context"
+	"errors"
 	"sync"
 )
 
-func (ax *Nexodus) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error {
-	ax.logger.Debugf("Ctl interface not yet supported on Windows")
-	return nil
+func CtlServerStart(ctx context.Context, wg *sync.WaitGroup, cs CtlServer) error {
+	return errors.New("Ctl interface not yet supported on OSX")
 }

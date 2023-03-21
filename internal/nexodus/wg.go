@@ -6,28 +6,49 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/nexodus-io/nexodus/internal/models"
+	"go.uber.org/zap"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 )
 
+const (
+	wgBinary          = "wg"
+	wgGoBinary        = "wireguard-go"
+	wgWinBinary       = "wireguard.exe"
+	WgLinuxConfPath   = "/etc/wireguard/"
+	WgDarwinConfPath  = "/usr/local/etc/wireguard/"
+	darwinIface       = "utun8"
+	WgDefaultPort     = 51820
+	wgIface           = "wg0"
+	WgWindowsConfPath = "C:/wireguard/"
+	WindowsConfFilePermissions = 0644
+	WindowsWgConfigFile        = "C:/wireguard/wg0.conf"
+
+
+	// wg keepalives are disabled and managed by the agent
+	PersistentKeepalive    = "0"
+	PersistentHubKeepalive = "0"
+)
+
 // handlePeerTunnel build wg tunnels
-func (ax *Nexodus) handlePeerTunnel(wgPeerConfig wgPeerConfig) {
+func HandlePeerTunnel(wgPeerConfig WgPeerConfig, tunnelIface string, relay bool, logger *zap.SugaredLogger) {
 	// validate the endpoint host:port pair parses.
 	// temporary: currently if relay state has not converged the endpoint can be registered as (none)
 	_, _, err := net.SplitHostPort(wgPeerConfig.Endpoint)
 	if err != nil {
-		ax.logger.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
+		logger.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
 		return
 	}
 
-	if err := ax.addPeer(wgPeerConfig); err != nil {
-		ax.logger.Errorf("peer tunnel addition failed: %v\n", err)
+	if err := addPeer(wgPeerConfig, tunnelIface, relay, logger); err != nil {
+		logger.Errorf("peer tunnel addition failed: %v\n", err)
 	}
 }
 
 // addPeer add a wg peer
-func (ax *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
+func addPeer(wgPeerConfig WgPeerConfig, tunnelIface string, relay bool, logger *zap.SugaredLogger) error {
 	wgClient, err := wgctrl.New()
 	if err != nil {
 		return err
@@ -50,7 +71,7 @@ func (ax *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
 
 	LocalIP, endpointPort, err := net.SplitHostPort(wgPeerConfig.Endpoint)
 	if err != nil {
-		ax.logger.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
+		logger.Debugf("failed parse the endpoint address for node [ %s ] (likely still converging) : %v\n", wgPeerConfig.PublicKey, err)
 		return err
 	}
 
@@ -68,7 +89,7 @@ func (ax *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
 
 	// relay nodes do not set explicit endpoints
 	cfg := wgtypes.Config{}
-	if ax.relay {
+	if relay {
 		cfg = wgtypes.Config{
 			ReplacePeers: false,
 			Peers: []wgtypes.PeerConfig{
@@ -82,7 +103,7 @@ func (ax *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
 		}
 	}
 	// all other nodes set peer endpoints
-	if !ax.relay {
+	if !relay {
 		cfg = wgtypes.Config{
 			ReplacePeers: false,
 			Peers: []wgtypes.PeerConfig{
@@ -97,31 +118,32 @@ func (ax *Nexodus) addPeer(wgPeerConfig wgPeerConfig) error {
 		}
 	}
 
-	return wgClient.ConfigureDevice(ax.tunnelIface, cfg)
+	return wgClient.ConfigureDevice(tunnelIface, cfg)
 }
 
-func (ax *Nexodus) handlePeerDelete(peerListing []models.Device) error {
+func HandlePeerDelete(peerListing []models.Device, deviceCache map[uuid.UUID]models.Device, tunnelIface string, logger *zap.SugaredLogger) error {
 	// if the canonical peer listing does not contain a peer from cache, delete the peer
-	for _, p := range ax.deviceCache {
+	for _, p := range deviceCache {
 		if inPeerListing(peerListing, p) {
 			continue
 		}
-		ax.logger.Debugf("Deleting peer with key: %s\n", ax.deviceCache[p.ID])
-		if err := ax.deletePeer(ax.deviceCache[p.ID].PublicKey, ax.tunnelIface); err != nil {
+		logger.Debugf("Deleting peer with key: %s\n", deviceCache[p.ID])
+		if err := deletePeer(deviceCache[p.ID].PublicKey, tunnelIface); err != nil {
 			return fmt.Errorf("failed to delete peer: %w", err)
 		}
+		logger.Infof("Removed peer with key %s", deviceCache[p.ID].PublicKey)
 		// delete the peer route(s)
-		ax.handlePeerRouteDelete(ax.tunnelIface, p)
+		HandlePeerRouteDelete(tunnelIface, p.AllowedIPs, logger)
 		// remove peer from local peer and key cache
-		delete(ax.deviceCache, p.ID)
-		delete(ax.deviceCache, p.ID)
+		delete(deviceCache, p.ID)
+		delete(deviceCache, p.ID)
 
 	}
 
 	return nil
 }
 
-func (ax *Nexodus) deletePeer(publicKey, dev string) error {
+func deletePeer(publicKey, dev string) error {
 	wgClient, err := wgctrl.New()
 	if err != nil {
 		return err
@@ -149,7 +171,6 @@ func (ax *Nexodus) deletePeer(publicKey, dev string) error {
 		return fmt.Errorf("failed to remove peer with key %s: %w", key, err)
 	}
 
-	ax.logger.Infof("Removed peer with key %s", key)
 	return nil
 }
 
@@ -162,7 +183,7 @@ func inPeerListing(peers []models.Device, p models.Device) bool {
 	return false
 }
 
-func getWgListenPort() (int, error) {
+func GetWgListenPort() (int, error) {
 	l, err := net.ListenUDP("udp", &net.UDPAddr{})
 	if err != nil {
 		return 0, err
@@ -177,4 +198,12 @@ func getWgListenPort() (int, error) {
 		return 0, err
 	}
 	return p, nil
+}
+
+// RelayIpTables iptables for the relay node
+func RelayIpTables(logger *zap.SugaredLogger, dev string) {
+	_, err := RunCommand("iptables", "-A", "FORWARD", "-i", dev, "-j", "ACCEPT")
+	if err != nil {
+		logger.Debugf("the hub router iptables rule was not added: %v", err)
+	}
 }

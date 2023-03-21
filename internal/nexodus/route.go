@@ -1,18 +1,18 @@
 package nexodus
 
-func (ax *Nexodus) addChildPrefixRoute(childPrefix string) {
+import "fmt"
+
+func AddChildPrefixRoute(childPrefix string, tunnelIface string) error {
 
 	routeExists, err := RouteExists(childPrefix)
 	if err != nil {
-		ax.logger.Warn(err)
+		return err
 	}
 
-	if routeExists {
-		ax.logger.Debugf("unable to add the child-prefix route [ %s ] as it already exists on this linux host", childPrefix)
-		return
+	if !routeExists {
+		if err := AddRoute(childPrefix, tunnelIface); err != nil {
+			return fmt.Errorf("error adding the child prefix route: %w", err)
+		}
 	}
-
-	if err := AddRoute(childPrefix, ax.tunnelIface); err != nil {
-		ax.logger.Infof("error adding the child prefix route: %v", err)
-	}
+	return nil
 }

@@ -1,16 +1,16 @@
-package nexodus
+package nexrelay
 
 import (
 	"fmt"
 )
 
-type NexdCtl struct {
-	ax *Nexodus
+type NexrelayCtl struct {
+	nexr *Nexrelay
 }
 
-func (ac *NexdCtl) Status(_ string, result *string) error {
+func (nrc *NexrelayCtl) Status(_ string, result *string) error {
 	var statusStr string
-	switch ac.ax.status {
+	switch nrc.nexr.status {
 	case NexdStatusStarting:
 		statusStr = "Starting"
 	case NexdStatusAuth:
@@ -21,14 +21,14 @@ func (ac *NexdCtl) Status(_ string, result *string) error {
 		statusStr = "Unknown"
 	}
 	res := fmt.Sprintf("Status: %s\n", statusStr)
-	if len(ac.ax.statusMsg) > 0 {
-		res += ac.ax.statusMsg
+	if len(nrc.nexr.statusMsg) > 0 {
+		res += nrc.nexr.statusMsg
 	}
 	*result = res
 	return nil
 }
 
-func (ac *NexdCtl) Version(_ string, result *string) error {
-	*result = ac.ax.version
+func (nrc *NexrelayCtl) Version(_ string, result *string) error {
+	*result = nrc.nexr.version
 	return nil
 }

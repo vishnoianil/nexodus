@@ -59,7 +59,7 @@ func RouteExists(prefix string) (bool, error) {
 	return false, nil
 }
 
-func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
+func DiscoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
 	iface, _, err := getDefaultGatewayIface(logger, family)
 	if err != nil {
 		return nil, fmt.Errorf("%w", err)
@@ -143,8 +143,8 @@ func getDefaultGatewayIface(logger *zap.SugaredLogger, family int) (string, net.
 	return "", net.IP{}, fmt.Errorf("failed to get default gateway interface")
 }
 
-// deleteIface checks to see if  is an interface exists and deletes it
-func linkExists(ifaceName string) bool {
+// LinkExists checks to see if  is an interface exists
+func LinkExists(ifaceName string) bool {
 	if _, err := netlink.LinkByName(ifaceName); err != nil {
 		return false
 	}
@@ -152,8 +152,8 @@ func linkExists(ifaceName string) bool {
 	return true
 }
 
-// delLink deletes the link and assumes it exists
-func delLink(ifaceName string) error {
+// DelLink deletes the link and assumes it exists
+func DelLink(ifaceName string) error {
 	if link, err := netlink.LinkByName(ifaceName); err == nil {
 		if err = netlink.LinkDel(link); err != nil {
 			return err
@@ -182,12 +182,12 @@ func DeleteRoute(prefix, dev string) error {
 	return netlink.RouteDel(&routeSpec)
 }
 
-func defaultTunnelDev() string {
+func DefaultTunnelDev() string {
 	return wgIface
 }
 
-// binaryChecks validate the required binaries are available
-func binaryChecks() error {
+// BinaryChecks validate the required binaries are available
+func BinaryChecks() error {
 	// all OSs require the wg binary
 	if !IsCommandAvailable(wgBinary) {
 		return fmt.Errorf("%s command not found, is wireguard installed?", wgBinary)
@@ -196,7 +196,7 @@ func binaryChecks() error {
 }
 
 // Check OS and report error if the OS is not supported.
-func checkOS(logger *zap.SugaredLogger) error {
+func CheckOS(logger *zap.SugaredLogger) error {
 	// ensure the linux wireguard directory exists
 	if err := CreateDirectory(WgLinuxConfPath); err != nil {
 		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgLinuxConfPath, err)

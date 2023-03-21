@@ -24,21 +24,21 @@ func AddRoute(prefix, dev string) error {
 	return nil
 }
 
-// discoverLinuxAddress only used for darwin build purposes
-func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
+// DiscoverLinuxAddress only used for darwin build purposes
+func DiscoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
 	return nil, nil
 }
 
-// deleteIface checks to see if  is an interface exists and deletes it
-func linkExists(ifaceName string) bool {
+// linkExists checks to see if  is an interface exists and deletes it
+func LinkExists(ifaceName string) bool {
 	if _, err := netlink.LinkByName(ifaceName); err != nil {
 		return false
 	}
 	return true
 }
 
-// delLink deletes the link and assumes it exists
-func delLink(ifaceName string) error {
+// DelLink deletes the link and assumes it exists
+func DelLink(ifaceName string) error {
 	if link, err := netlink.LinkByName(ifaceName); err == nil {
 		if err = netlink.LinkDel(link); err != nil {
 			return err
@@ -57,12 +57,12 @@ func DeleteRoute(prefix, dev string) error {
 	return nil
 }
 
-func defaultTunnelDev() string {
+func DefaultTunnelDev() string {
 	return darwinIface
 }
 
-// binaryChecks validate the required binaries are available
-func binaryChecks() error {
+// BinaryChecks validate the required binaries are available
+func BinaryChecks() error {
 	// Darwin wireguard-go userspace binary
 	if !IsCommandAvailable(wgGoBinary) {
 		return fmt.Errorf("%s command not found, is wireguard installed?", wgGoBinary)
@@ -71,7 +71,7 @@ func binaryChecks() error {
 }
 
 // Check OS and report error if the OS is not supported.
-func checkOS(logger *zap.SugaredLogger) error {
+func CheckOS(logger *zap.SugaredLogger) error {
 	// ensure the osx wireguard directory exists
 	if err := CreateDirectory(WgDarwinConfPath); err != nil {
 		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgDarwinConfPath, err)

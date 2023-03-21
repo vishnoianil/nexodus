@@ -31,12 +31,15 @@ endif
 ##@ All
 
 .PHONY: all
-all: gen-docs go-lint yaml-lint md-lint ui-lint nexd nexctl ## Run linters and build nexd
+all: gen-docs go-lint yaml-lint md-lint ui-lint nexd nexrelay nexctl ## Run linters and build nexd
 
 ##@ Binaries
 
 .PHONY: nexd
 nexd: dist/nexd dist/nexd-linux-arm dist/nexd-linux-amd64 dist/nexd-darwin-amd64 dist/nexd-darwin-arm64 dist/nexd-windows-amd64 ## Build the nexd binary for all architectures
+
+.PHONY: nexrelay
+nexd: dist/nexrelay dist/nexrelay-linux-arm dist/nexrelay-linux-amd64 ## Build the nexd binary for all architectures
 
 .PHONY: nexctl
 nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-darwin-amd64 dist/nexctl-darwin-arm64 dist/nexctl-windows-amd64 ## Build the nexctl binary for all architectures
@@ -44,6 +47,8 @@ nexctl: dist/nexctl dist/nexctl-linux-arm dist/nexctl-linux-amd64 dist/nexctl-da
 COMMON_DEPS=$(wildcard ./internal/**/*.go) go.sum go.mod
 
 NEXD_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexd/*.go)
+
+NEXRELAY_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexrelay/*.go)
 
 NEXCTL_DEPS=$(COMMON_DEPS) $(wildcard cmd/nexctl/*.go)
 
@@ -58,6 +63,10 @@ dist/nexd: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
 
+dist/nexrelay: $(NEXRELAY_DEPS) | dist
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexrelay
+
 dist/nexctl: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexctl
@@ -66,6 +75,11 @@ dist/nexd-%: $(NEXD_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
 	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
 		go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexd
+
+dist/nexrelay-%: $(NEXRELAY_DEPS) | dist
+	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
+	$(CMD_PREFIX) CGO_ENABLED=0 GOOS=$(word 2,$(subst -, ,$(basename $@))) GOARCH=$(word 3,$(subst -, ,$(basename $@))) \
+		go build -ldflags="$(NEXODUS_LDFLAGS)" -o $@ ./cmd/nexrelay
 
 dist/nexctl-%: $(NEXCTL_DEPS) | dist
 	$(ECHO_PREFIX) printf "  %-12s $@\n" "[GO BUILD]"
@@ -242,6 +256,11 @@ image-apiserver:
 image-nexd:
 	docker build -f Containerfile.nexd -t quay.io/nexodus/nexd:$(TAG) .
 	docker tag quay.io/nexodus/nexd:$(TAG) quay.io/nexodus/nexd:latest
+
+.PHONY: image-nexrelay ## Build the nexodus relay agent image
+image-nexrelay:
+	docker build -f Containerfile.nexrelay -t quay.io/nexodus/nexrelay:$(TAG) .
+	docker tag quay.io/nexodus/nexrelay:$(TAG) quay.io/nexodus/nexrelay:latest
 
 .PHONY: image-ipam ## Build the IPAM image
 image-ipam:

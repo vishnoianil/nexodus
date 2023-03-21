@@ -2,15 +2,16 @@ package nexodus
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/libp2p/go-reuseport"
 	"github.com/pion/stun"
 	"go.uber.org/zap"
-	"net"
 )
 
 const (
-	stunServer1 = "stun1.l.google.com:19302"
-	stunServer2 = "stun2.l.google.com:19302"
+	StunServer1 = "stun1.l.google.com:19302"
+	StunServer2 = "stun2.l.google.com:19302"
 )
 
 func StunRequest(logger *zap.SugaredLogger, stunServer string, srcPort int) (net.UDPAddr, error) {

@@ -77,12 +77,28 @@ func main() {
 					{
 						Name:   "version",
 						Usage:  "Display the nexd version",
-						Action: cmdLocalVersion,
+						Action: cmdNexdVersion,
 					},
 					{
 						Name:   "status",
 						Usage:  "Display the nexd status",
-						Action: cmdLocalStatus,
+						Action: cmdNexdStatus,
+					},
+				},
+			},
+			{
+				Name:  "nexrelay",
+				Usage: "Commands for interacting with the local instance of nexrelay",
+				Subcommands: []*cli.Command{
+					{
+						Name:   "version",
+						Usage:  "Display the nexrelay version",
+						Action: cmdNexrelayVersion,
+					},
+					{
+						Name:   "status",
+						Usage:  "Display the nexrelay status",
+						Action: cmdNexrelayStatus,
 					},
 				},
 			},

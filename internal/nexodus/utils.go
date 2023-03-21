@@ -74,8 +74,8 @@ func ValidateCIDR(cidr string) error {
 	return nil
 }
 
-// discoverGenericIPv4 opens a socket to the controller and returns the IP of the source dial
-func discoverGenericIPv4(logger *zap.SugaredLogger, controller string, port string) (string, error) {
+// DiscoverGenericIPv4 opens a socket to the controller and returns the IP of the source dial
+func DiscoverGenericIPv4(logger *zap.SugaredLogger, controller string, port string) (string, error) {
 	controllerSocket := fmt.Sprintf("%s:%s", controller, port)
 	conn, err := net.Dial("udp", controllerSocket)
 	if err != nil {
@@ -95,19 +95,19 @@ func IsNAT(logger *zap.SugaredLogger, nodeOS, controller string, port string) (b
 	var hostIP string
 	var err error
 	if nodeOS == Darwin.String() || nodeOS == Windows.String() {
-		hostIP, err = discoverGenericIPv4(logger, controller, port)
+		hostIP, err = DiscoverGenericIPv4(logger, controller, port)
 		if err != nil {
 			return false, err
 		}
 	}
 	if nodeOS == Linux.String() {
-		linuxIP, err := discoverLinuxAddress(logger, 4)
+		linuxIP, err := DiscoverLinuxAddress(logger, 4)
 		if err != nil {
 			return false, err
 		}
 		hostIP = linuxIP.String()
 	}
-	ipAndPort, err := StunRequest(logger, stunServer1, 0)
+	ipAndPort, err := StunRequest(logger, StunServer1, 0)
 	if err != nil {
 		return false, err
 	}
@@ -144,7 +144,7 @@ func ParseIPNet(s string) (*net.IPNet, error) {
 	return &net.IPNet{IP: ip, Mask: ipNet.Mask}, nil
 }
 
-func parseNetworkStr(cidr string) (string, error) {
+func ParseNetworkStr(cidr string) (string, error) {
 	_, nw, err := net.ParseCIDR(cidr)
 	if err != nil {
 		return "", err
@@ -153,28 +153,29 @@ func parseNetworkStr(cidr string) (string, error) {
 }
 
 // WriteToFile overwrite the contents of a file
-func WriteToFile(logger *zap.SugaredLogger, s, file string, filePermissions int) {
+func WriteToFile(s, file string, filePermissions int) error {
 	// overwrite the existing file contents
 	f, err := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, os.FileMode(filePermissions))
 	if err != nil {
-		logger.Warnf("Unable to open the file %s to write to: %v", file, err)
+		return fmt.Errorf("Unable to open the file %s to write to: %w", file, err)
 	}
 
 	defer func(f *os.File) {
 		err = f.Close()
 		if err != nil {
-			logger.Warnf("Unable to write to file [ %s ] %v", file, err)
+			err = fmt.Errorf("Unable to write to file [ %s ] %w", file, err)
 		}
 	}(f)
 
 	wr := bufio.NewWriter(f)
 	_, err = wr.WriteString(s)
 	if err != nil {
-		logger.Warnf("Unable to write to file [ %s ] %v", file, err)
+		return fmt.Errorf("Unable to write to file [ %s ] %w", file, err)
 	}
 	if err = wr.Flush(); err != nil {
-		logger.Warnf("Unable to write to file [ %s ] %v", file, err)
+		return fmt.Errorf("Unable to write to file [ %s ] %w", file, err)
 	}
+	return nil
 }
 
 func LocalIPv4Address() net.IP {

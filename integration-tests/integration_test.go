@@ -111,10 +111,10 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 	})
 
 	// start nexodus on the nodes
-	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--hub-router")
+	suite.runNexrelay(ctx, node1, "--username", username, "--password", password)
 
 	// validate nexd has started on the discovery node
-	err := suite.nexdStatus(ctx, node1)
+	err := suite.nexrelayStatus(ctx, node1)
 	require.NoError(err)
 
 	suite.runNexd(ctx, node2, "--username", username, "--password", password)
@@ -135,7 +135,7 @@ func (suite *NexodusIntegrationSuite) TestBasicConnectivity() {
 
 	suite.logger.Info("killing nexodus and re-joining nodes with new keys")
 	//kill the nexodus process on both nodes
-	_, err = suite.containerExec(ctx, node1, []string{"killall", "nexd"})
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "nexrelay"})
 	require.NoError(err)
 	_, err = suite.containerExec(ctx, node2, []string{"killall", "nexd"})
 	require.NoError(err)
@@ -222,11 +222,10 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 	})
 
 	// start nexodus on the nodes
-	suite.runNexd(ctx, node1, "--hub-router",
-		"--username", username, "--password", password)
+	suite.runNexrelay(ctx, node1, "--username", username, "--password", password)
 
 	// validate nexd has started on the discovery node
-	err := suite.nexdStatus(ctx, node1)
+	err := suite.nexrelayStatus(ctx, node1)
 	require.NoError(err)
 
 	suite.runNexd(ctx, node2,
@@ -250,20 +249,19 @@ func (suite *NexodusIntegrationSuite) TestRequestIPOrganization() {
 
 	suite.logger.Info("killing nexodus and re-joining nodes")
 	//kill the nexodus process on both nodes
-	_, err = suite.containerExec(ctx, node1, []string{"killall", "nexd"})
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "nexrelay"})
 	require.NoError(err)
 	_, err = suite.containerExec(ctx, node2, []string{"killall", "nexd"})
 	require.NoError(err)
 
 	// restart nexodus and ensure the nodes receive the same re-quested address
 	suite.logger.Info("Restarting nexodus on two spoke nodes and re-joining")
-	suite.runNexd(ctx, node1, "--hub-router",
-		"--username", username, "--password", password,
+	suite.runNexrelay(ctx, node1, "--username", username, "--password", password,
 		fmt.Sprintf("--request-ip=%s", node1IP),
 	)
 
 	// validate nexd has started on the discovery node
-	err = suite.nexdStatus(ctx, node1)
+	err = suite.nexrelayStatus(ctx, node1)
 	require.NoError(err)
 
 	suite.runNexd(ctx, node2,
@@ -315,10 +313,10 @@ func (suite *NexodusIntegrationSuite) TestHubOrganization() {
 	})
 
 	// start nexodus on the nodes
-	suite.runNexd(ctx, node1, "--hub-router", "--username", username, "--password", password)
+	suite.runNexrelay(ctx, node1, "--username", username, "--password", password)
 
 	// validate nexd has started on the discovery node
-	err := suite.nexdStatus(ctx, node1)
+	err := suite.nexrelayStatus(ctx, node1)
 	require.NoError(err)
 
 	suite.runNexd(ctx, node2, "--username", username, "--password", password)
@@ -480,8 +478,7 @@ func (suite *NexodusIntegrationSuite) TestChildPrefix() {
 	})
 
 	// start nexodus on the nodes
-	suite.runNexd(ctx, node1, "--hub-router",
-		fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
+	suite.runNexd(ctx, node1, fmt.Sprintf("--child-prefix=%s", node1ChildPrefix),
 		"--username", username, "--password", password,
 	)
 
@@ -562,10 +559,10 @@ func (suite *NexodusIntegrationSuite) TestRelay() {
 	})
 
 	// start nexodus on the nodes
-	suite.runNexd(ctx, node1, "--username", username, "--password", password, "--hub-router")
+	suite.runNexrelay(ctx, node1, "--username", username, "--password", password)
 
 	// validate nexd has started on the discovery node
-	err := suite.nexdStatus(ctx, node1)
+	err := suite.nexrelayStatus(ctx, node1)
 	require.NoError(err)
 
 	suite.runNexd(ctx, node2, "--username", username, "--password", password)
@@ -640,10 +637,10 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	require.Equal(1, len(user.Organizations))
 
 	// start nexodus on the nodes
-	suite.runNexd(ctx, node1, "--hub-router", "--username", username, "--password", password)
+	suite.runNexrelay(ctx, node1, "--username", username, "--password", password)
 
 	// validate nexd has started on the discovery node
-	err = suite.nexdStatus(ctx, node1)
+	err = suite.nexrelayStatus(ctx, node1)
 	require.NoError(err)
 
 	suite.runNexd(ctx, node2, "--username", username, "--password", password, "--child-prefix=100.22.100.0/24")
@@ -686,7 +683,7 @@ func (suite *NexodusIntegrationSuite) Testnexctl() {
 	}
 
 	//kill the nexodus process on both nodes
-	_, err = suite.containerExec(ctx, node1, []string{"killall", "nexd"})
+	_, err = suite.containerExec(ctx, node1, []string{"killall", "nexrelay"})
 	require.NoError(err)
 	_, err = suite.containerExec(ctx, node2, []string{"killall", "nexd"})
 	require.NoError(err)

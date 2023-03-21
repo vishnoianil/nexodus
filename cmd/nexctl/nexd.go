@@ -27,7 +27,7 @@ func callNexd(method string) (string, error) {
 	return result, nil
 }
 
-func checkVersion() error {
+func checkNexdVersion() error {
 	result, err := callNexd("Version")
 	if err != nil {
 		fmt.Printf("Failed to get nexd version: %+v\n", err)
@@ -43,7 +43,7 @@ func checkVersion() error {
 	return nil
 }
 
-func cmdLocalVersion(cCtx *cli.Context) error {
+func cmdNexdVersion(cCtx *cli.Context) error {
 	fmt.Printf("nexctl version: %s\n", Version)
 
 	result, err := callNexd("Version")
@@ -53,8 +53,8 @@ func cmdLocalVersion(cCtx *cli.Context) error {
 	return err
 }
 
-func cmdLocalStatus(cCtx *cli.Context) error {
-	if err := checkVersion(); err != nil {
+func cmdNexdStatus(cCtx *cli.Context) error {
+	if err := checkNexdVersion(); err != nil {
 		return err
 	}
 

@@ -270,7 +270,32 @@ func (suite *NexodusIntegrationSuite) runNexd(ctx context.Context, node testcont
 	cmd = append(cmd, ">> /nexd.logs 2>&1 &")
 
 	// write the nexd run command to a local file
-	nexodus.WriteToFile(suite.logger, strings.Join(cmd, " "), runScriptLocal, 0755)
+	nexodus.WriteToFile(strings.Join(cmd, " "), runScriptLocal, 0755)
+	// copy the nexd run script to the test container
+	err := node.CopyFileToContainer(ctx, runScriptLocal, fmt.Sprintf("/bin/%s", runScript), 0755)
+	if suite.T().Failed() {
+		suite.logger.Errorf("execution of copy command on %s failed: %v", nodeName, err)
+	}
+	// execute the nexd run script on the test container
+	out, err := suite.containerExec(ctx, node, []string{"/bin/bash", "-c", runScript})
+	if suite.T().Failed() {
+		suite.logger.Errorf("execution of command on %s failed: %s", nodeName, strings.Join(cmd, " "))
+		suite.logger.Errorf("output:\n%s", out)
+		suite.logger.Errorf("%+v", err)
+	}
+}
+
+func (suite *NexodusIntegrationSuite) runNexrelay(ctx context.Context, node testcontainers.Container, args ...string) {
+	nodeName, _ := node.Name(ctx)
+	runScript := fmt.Sprintf("%s-nexrelay-run.sh", strings.TrimPrefix(nodeName, "/"))
+	runScriptLocal := fmt.Sprintf("tmp/%s", runScript)
+	cmd := []string{"/bin/nexrelay"}
+	cmd = append(cmd, args...)
+	cmd = append(cmd, "https://try.nexodus.local")
+	cmd = append(cmd, ">> /nexrelay.logs 2>&1 &")
+
+	// write the nexd run command to a local file
+	nexodus.WriteToFile(strings.Join(cmd, " "), runScriptLocal, 0755)
 	// copy the nexd run script to the test container
 	err := node.CopyFileToContainer(ctx, runScriptLocal, fmt.Sprintf("/bin/%s", runScript), 0755)
 	if suite.T().Failed() {
@@ -386,6 +411,21 @@ func (suite *NexodusIntegrationSuite) nexdStatus(ctx context.Context, ctr testco
 	}
 	nodeName, _ := ctr.Name(ctx)
 	return fmt.Errorf("failed to get a 'Running' status from the nexd process in node: %s", nodeName)
+}
+
+// nexdStatus checks for a Running status of the nexd process via nexctl
+func (suite *NexodusIntegrationSuite) nexrelayStatus(ctx context.Context, ctr testcontainers.Container) error {
+	timeoutCtx, cancel := context.WithTimeout(ctx, time.Second*10)
+	defer cancel()
+	running, _ := util.CheckPeriodically(timeoutCtx, time.Second, func() (bool, error) {
+		statOut, _ := suite.containerExec(ctx, ctr, []string{"/bin/nexctl", "nexrelay", "status"})
+		return strings.Contains(statOut, "Running"), nil
+	})
+	if running {
+		return nil
+	}
+	nodeName, _ := ctr.Name(ctx)
+	return fmt.Errorf("failed to get a 'Running' status from the nexrelay process in node: %s", nodeName)
 }
 
 func (suite *NexodusIntegrationSuite) createNewUser(ctx context.Context, password string) string {

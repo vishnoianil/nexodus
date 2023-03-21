@@ -28,8 +28,8 @@ const (
 	ICMP_ECHO_REPLY_HEADER_IPV4_OFFSET = 20
 )
 
-// probePeers initial simple proofing of a peer discovery
-func probePeers(peers []string, logger *zap.SugaredLogger) []string {
+// ProbePeers initial simple proofing of a peer discovery
+func ProbePeers(peers []string, logger *zap.SugaredLogger) []string {
 	c := make(chan probeResults)
 	for _, peer := range peers {
 		go runProbe(peer, c)

@@ -25,12 +25,12 @@ func AddRoute(prefix, dev string) error {
 	return nil
 }
 
-// discoverLinuxAddress only used for windows build purposes
-func discoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
+// DiscoverLinuxAddress only used for windows build purposes
+func DiscoverLinuxAddress(logger *zap.SugaredLogger, family int) (net.IP, error) {
 	return nil, nil
 }
 
-func linkExists(wgIface string) bool {
+func LinkExists(wgIface string) bool {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		fmt.Print(fmt.Errorf("localAddresses: %w\n", err))
@@ -45,7 +45,7 @@ func linkExists(wgIface string) bool {
 }
 
 // delLink only used for windows build purposes
-func delLink(wgIface string) (err error) {
+func DelLink(wgIface string) (err error) {
 	return nil
 }
 
@@ -59,12 +59,12 @@ func DeleteRoute(prefix, dev string) error {
 	return nil
 }
 
-func defaultTunnelDev() string {
+func DefaultTunnelDev() string {
 	return wgIface
 }
 
-// binaryChecks validate the required binaries are available
-func binaryChecks() error {
+// BinaryChecks validate the required binaries are available
+func BinaryChecks() error {
 	if !IsCommandAvailable(wgWinBinary) {
 		return fmt.Errorf("%s command not found, is wireguard installed?", wgWinBinary)
 	}
@@ -72,7 +72,7 @@ func binaryChecks() error {
 }
 
 // Check OS and report error if the OS is not supported.
-func checkOS(logger *zap.SugaredLogger) error {
+func CheckOS(logger *zap.SugaredLogger) error {
 	// ensure the windows wireguard directory exists
 	if err := CreateDirectory(WgWindowsConfPath); err != nil {
 		return fmt.Errorf("unable to create the wireguard config directory [%s]: %w", WgWindowsConfPath, err)

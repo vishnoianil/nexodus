@@ -4,54 +4,51 @@ package nexodus
 
 import (
 	"context"
-	"github.com/nexodus-io/nexodus/internal/util"
 	"net"
 	"net/rpc"
 	"net/rpc/jsonrpc"
 	"os"
 	"sync"
+
+	"github.com/nexodus-io/nexodus/internal/util"
 )
 
-// TODO make this path configurable
-const UnixSocketPath = "/run/nexd.sock"
-
-func (ax *Nexodus) CtlServerStart(ctx context.Context, wg *sync.WaitGroup) error {
-	ax.CtlServerLinuxStart(ctx, wg)
+func CtlServerStart(ctx context.Context, wg *sync.WaitGroup, cs CtlServer) error {
+	ctlServerLinuxStart(ctx, wg, cs)
 	return nil
 }
 
-func (ax *Nexodus) CtlServerLinuxStart(ctx context.Context, wg *sync.WaitGroup) {
+func ctlServerLinuxStart(ctx context.Context, wg *sync.WaitGroup, cs CtlServer) {
 	util.GoWithWaitGroup(wg, func() {
 		for {
 			// Use a different waitgroup here, because we want to make sure
 			// all of the subroutines have exited before we attempt to restart
 			// the control server.
 			ctlWg := &sync.WaitGroup{}
-			err := ax.CtlServerLinuxRun(ctx, ctlWg)
+			err := ctlServerLinuxRun(ctx, ctlWg, cs)
 			ctlWg.Done()
 			if err == nil {
 				// No error means it shut down cleanly because it got a message to stop
 				break
 			}
-			ax.logger.Error("Ctl interface error, restarting: ", err)
+			cs.Logger().Error("Ctl interface error, restarting: ", err)
 		}
 	})
 }
 
-func (ax *Nexodus) CtlServerLinuxRun(ctx context.Context, ctlWg *sync.WaitGroup) error {
-	os.Remove(UnixSocketPath)
-	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: UnixSocketPath, Net: "unix"})
+func ctlServerLinuxRun(ctx context.Context, ctlWg *sync.WaitGroup, cs CtlServer) error {
+	unixSocketPath := cs.GetSocketPath()
+	os.Remove(unixSocketPath)
+	l, err := net.ListenUnix("unix", &net.UnixAddr{Name: unixSocketPath, Net: "unix"})
 	if err != nil {
-		ax.logger.Error("Error creating unix socket: ", err)
+		cs.Logger().Error("Error creating unix socket: ", err)
 		return err
 	}
 	defer l.Close()
 
-	ac := new(NexdCtl)
-	ac.ax = ax
-	err = rpc.Register(ac)
+	err = rpc.Register(cs.GetReceiver())
 	if err != nil {
-		ax.logger.Error("Error on rpc.Register(): ", err)
+		cs.Logger().Error("Error on rpc.Register(): ", err)
 		return err
 	}
 
@@ -79,10 +76,10 @@ func (ax *Nexodus) CtlServerLinuxRun(ctx context.Context, ctlWg *sync.WaitGroup)
 		case err = <-errChan:
 			// Accept() failed, collect the error and stop the CtlServer
 			stopNow = true
-			ax.logger.Error("Error on Accept(): ", err)
+			cs.Logger().Error("Error on Accept(): ", err)
 			break
 		case <-ctx.Done():
-			ax.logger.Info("Stopping CtlServer")
+			cs.Logger().Info("Stopping CtlServer")
 			stopNow = true
 			err = nil
 		}
